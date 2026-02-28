@@ -1,0 +1,27 @@
+body {
+    background: #111;
+    color: white;
+    font-family: Arial;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    padding: 20px;
+    background: #1c1c1c;
+}
+
+.main {
+    display: flex;
+    padding: 20px;
+}
+
+.left {
+    width: 60%;
+}
+
+.right {
+    width: 40%;
+    background: #1c1c1c;
+    padding: 20px;
+}

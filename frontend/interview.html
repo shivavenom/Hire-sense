@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Interview Session</title>
+    <link rel="stylesheet" href="css/interview.css">
+</head>
+<body>
+
+<div class="header">
+    <span id="sessionId"></span>
+    <button id="endBtn">End Interview</button>
+</div>
+
+<div class="main">
+    <div class="left">
+        <h2 id="questionTitle">Question</h2>
+        <div id="questionBox"></div>
+
+        <textarea id="answerBox" placeholder="Type your answer here..."></textarea>
+        <button id="submitBtn">Submit Answer</button>
+    </div>
+
+    <div class="right">
+        <h3>Evaluation</h3>
+        <div id="evaluationPanel"></div>
+    </div>
+</div>
+
+<script type="module" src="js/interview.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>HireSense AI Interview</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<div class="container">
+    <h1>HireSense AI Interview Platform</h1>
+
+    <textarea id="resume" placeholder="Paste Resume Here"></textarea>
+    <textarea id="jd" placeholder="Paste Job Description Here"></textarea>
+
+    <button id="startBtn">Start Interview</button>
+    <div id="loader" class="hidden">Starting...</div>
+</div>
+
+<script type="module">
+import { startInterview } from "./js/api.js";
+
+const btn = document.getElementById("startBtn");
+const loader = document.getElementById("loader");
+
+btn.addEventListener("click", async () => {
+    const resume = document.getElementById("resume").value;
+    const jd = document.getElementById("jd").value;
+
+    if (!resume || !jd) return alert("All fields required");
+
+    loader.classList.remove("hidden");
+    btn.disabled = true;
+
+    const response = await startInterview(resume, jd);
+
+    sessionStorage.setItem("session_id", response.session_id);
+    sessionStorage.setItem("current_question", response.question);
+
+    window.location.href = "interview.html";
+});
+</script>
+
+</body>
+</html>
