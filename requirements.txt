@@ -2,4 +2,4 @@ fastapi
 uvicorn
 pydantic
 llama-cpp-python
-python-doten
+python-dotenv

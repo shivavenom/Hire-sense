@@ -222,6 +222,7 @@ class InterviewOrchestrator:
         answer = answers[-1]
 
         evaluation = self.evaluator.evaluate(question, answer, plan)
+        print("EVALUATION OUTPUT:", evaluation)
 
         self.session_store.store_evaluation(session_id, evaluation)
         self.session_store.update_state(

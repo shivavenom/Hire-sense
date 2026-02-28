@@ -1,18 +1,23 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from typing import Dict
 
-from app.core.dependency_container import build_orchestrator
+from app.core.orchestrator import InterviewOrchestrator
 
 
-router = APIRouter()
-orchestrator = build_orchestrator()
+def get_session_router(orchestrator: InterviewOrchestrator) -> APIRouter:
+    """
+    Session-related routes.
+    """
 
+    router = APIRouter(prefix="/session", tags=["Session"])
 
-@router.get("/session/{session_id}")
-def get_session(session_id: str) -> Dict:
-    session = orchestrator.session_store.get_session(session_id)
+    @router.get("/{session_id}")
+    def get_session(session_id: str) -> Dict:
+        session = orchestrator.session_store.get_session(session_id)
 
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
+        if not session:
+            return {"error": "Session not found"}
 
-    return session
+        return session
+
+    return router

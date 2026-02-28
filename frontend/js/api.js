@@ -1,39 +1,41 @@
-import { CONFIG } from "../config.js";
+const BASE_URL = "http://127.0.0.1:8000";
+
+async function request(endpoint, method = "GET", body = null) {
+    const options = {
+        method,
+        headers: { "Content-Type": "application/json" }
+    };
+
+    if (body) {
+        options.body = JSON.stringify(body);
+    }
+
+    const response = await fetch(`${BASE_URL}${endpoint}`, options);
+
+    if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.detail || "Server error");
+    }
+
+    return response.json();
+}
 
 export async function startInterview(resume, jobDescription) {
-    const response = await fetch(`${CONFIG.BASE_URL}/start`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            resume: resume,
-            job_description: jobDescription
-        })
+    return request("/start", "POST", {
+        resume,
+        job_description: jobDescription
     });
-
-    return await response.json();
 }
 
 export async function submitAnswer(sessionId, answer) {
-    const response = await fetch(`${CONFIG.BASE_URL}/answer`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            session_id: sessionId,
-            answer: answer
-        })
+    return request("/answer", "POST", {
+        session_id: sessionId,
+        answer
     });
-
-    return await response.json();
 }
 
 export async function endInterview(sessionId) {
-    const response = await fetch(`${CONFIG.BASE_URL}/end`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            session_id: sessionId
-        })
+    return request("/end", "POST", {
+        session_id: sessionId
     });
-
-    return await response.json();
 }

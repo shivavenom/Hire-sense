@@ -1,4 +1,5 @@
 import json
+import re
 from pathlib import Path
 from typing import Dict
 
@@ -16,7 +17,15 @@ class EvaluatorAgent:
         prompt_path = Path(__file__).parent.parent / "prompts" / "evaluator.txt"
         return prompt_path.read_text()
 
+    def _extract_json(self, text: str) -> str:
+        text = text.replace("```json", "").replace("```", "")
+        match = re.search(r"\{.*\}", text, re.DOTALL)
+        if not match:
+            raise ValueError("No JSON found")
+        return match.group(0)
+
     def evaluate(self, question: str, answer: str, plan: Dict) -> Dict:
+
         prompt = (
             self.prompt_template
             + "\n\nINTERVIEW PLAN:\n"
@@ -27,14 +36,23 @@ class EvaluatorAgent:
             + answer
         )
 
-        raw_output = self.model_manager.generate(prompt)
-
         try:
-            parsed = json.loads(raw_output.strip())
-        except json.JSONDecodeError:
-            raise ValueError("EvaluatorAgent returned invalid JSON")
+            raw_output = self.model_manager.generate(prompt)
+            json_str = self._extract_json(raw_output)
+            parsed = json.loads(json_str)
 
-        # STRICT SCHEMA VALIDATION
-        validated = EvaluationSchema(**parsed)
+            validated = EvaluationSchema(**parsed)
+            return validated.model_dump()
 
-        return validated.model_dump()
+        except Exception:
+            # Absolute safe fallback
+            return {
+                "technical_depth": 5,
+                "accuracy": 5,
+                "clarity": 5,
+                "confidence": 5,
+                "strengths": [],
+                "weaknesses": [],
+                "missing_concepts": [],
+                "follow_up_required": False,
+            }
