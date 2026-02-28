@@ -1,66 +1,154 @@
-import json
-from pathlib import Path
-from typing import Dict
+# app/agents/conductor_agent.py
 
+from typing import Dict, Any
 from app.models.model_manager import ModelManager
 
 
 class ConductorAgent:
+    """
+    Conversational Interview Conductor
+
+    Responsibilities:
+    - Maintain human-like interview flow
+    - Greet candidate properly
+    - Gradually move into technical depth
+    - Use conversation history
+    - Never evaluate (evaluation is separate agent)
+    """
 
     def __init__(self, model_manager: ModelManager):
         self.model_manager = model_manager
-        self.followup_prompt = self._load_followup_prompt()
 
-    def _load_followup_prompt(self) -> str:
-        prompt_path = Path(__file__).parent.parent / "prompts" / "followup.txt"
-        return prompt_path.read_text()
+    # ==========================================================
+    # MAIN QUESTION GENERATION
+    # ==========================================================
 
-    # ----------------------------------
-    # Generate Normal Question
-    # ----------------------------------
+    def generate_question(self, session: Dict[str, Any]) -> str:
+        candidate_name = session.get("candidate_name", "Candidate")
+        plan = session.get("plan", {})
+        conversation = session.get("conversation", [])
+        questions = session.get("questions", [])
 
-    def generate_question(self, session: Dict) -> str:
-        plan = session["plan"]
-        questions_asked = len(session["questions"])
+        is_first_message = len(questions) == 0
 
-        core_topics = plan.get("core_topics", [])
+        history_text = self._format_conversation(conversation)
 
-        if questions_asked >= len(core_topics):
-            # fallback generic deep question
-            topic = core_topics[-1] if core_topics else "core technical concepts"
+        if is_first_message:
+            prompt = f"""
+You are a calm, professional technical interviewer.
+
+Candidate Name: {candidate_name}
+
+Start the interview naturally.
+
+1. Greet the candidate by name.
+2. Make them feel comfortable.
+3. Briefly acknowledge their background.
+4. Then smoothly transition into the first light technical discussion.
+
+Do NOT sound robotic.
+Do NOT number questions.
+Do NOT behave like an exam paper.
+Keep it conversational and human.
+
+Interview plan (internal guidance):
+{plan}
+
+Conversation so far:
+{history_text}
+
+Now continue the interview.
+"""
         else:
-            topic = core_topics[questions_asked]
+            prompt = f"""
+You are continuing a live technical interview.
 
-        prompt = (
-            "You are a technical interviewer.\n"
-            f"Ask one interview question about: {topic}\n"
-            "Only output the question.\n"
-            "No explanation.\n"
-        )
+Candidate Name: {candidate_name}
 
-        output = self.model_manager.generate(prompt)
+Keep the tone conversational and natural.
 
-        return output.strip()
+Gradually increase technical depth.
+Ask follow-up questions naturally.
+Do NOT sound like an exam sheet.
+Avoid abrupt transitions.
 
-    # ----------------------------------
-    # Generate Follow-Up Question
-    # ----------------------------------
+Interview plan (internal guidance):
+{plan}
 
-    def generate_followup(self, session: Dict, evaluation: Dict) -> str:
+Conversation so far:
+{history_text}
+
+Now continue the interview.
+"""
+
+        response = self.model_manager.generate(prompt)
+
+        # Store in conversation
+        conversation.append({"role": "assistant", "content": response})
+        session["conversation"] = conversation
+
+        return response.strip()
+
+    # ==========================================================
+    # FOLLOW-UP GENERATION (After Evaluation)
+    # ==========================================================
+
+    def generate_followup(
+        self,
+        session: Dict[str, Any],
+        evaluation: Dict[str, Any]
+    ) -> str:
+
+        candidate_name = session.get("candidate_name", "Candidate")
+        conversation = session.get("conversation", [])
+        history_text = self._format_conversation(conversation)
 
         weaknesses = evaluation.get("weaknesses", [])
         missing = evaluation.get("missing_concepts", [])
 
-        focus_area = weaknesses + missing
+        prompt = f"""
+You are a professional technical interviewer.
 
-        prompt = (
-            self.followup_prompt
-            + "\n\nWEAKNESSES:\n"
-            + json.dumps(weaknesses)
-            + "\n\nMISSING CONCEPTS:\n"
-            + json.dumps(missing)
-        )
+Candidate Name: {candidate_name}
 
-        output = self.model_manager.generate(prompt)
+You noticed some gaps in the candidate's previous answer.
 
-        return output.strip()
+Weak areas:
+{weaknesses}
+
+Missing concepts:
+{missing}
+
+Ask a natural follow-up question to clarify or probe deeper.
+Do NOT mention evaluation or scoring.
+Keep tone supportive and calm.
+Sound like a real interviewer.
+
+Conversation so far:
+{history_text}
+
+Continue the interview naturally.
+"""
+
+        response = self.model_manager.generate(prompt)
+
+        conversation.append({"role": "assistant", "content": response})
+        session["conversation"] = conversation
+
+        return response.strip()
+
+    # ==========================================================
+    # HELPER
+    # ==========================================================
+
+    def _format_conversation(self, conversation):
+        if not conversation:
+            return "No prior conversation."
+
+        formatted = ""
+        for turn in conversation:
+            role = turn.get("role", "assistant")
+            content = turn.get("content", "")
+            formatted += f"{role.upper()}: {content}\n"
+
+        return formatted

@@ -1,20 +1,72 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HireSense AI Interview</title>
-    <link rel="stylesheet" href="css/styles.css">
+
+    <!-- Tailwind CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <link rel="shortcut icon" href="logo.jpeg" type="image/x-icon">
 </head>
-<body>
 
-<div class="container">
-    <h1>HireSense AI Interview Platform</h1>
+<body class="bg-gradient-to-br from-blue-50 via-white to-blue-100 min-h-screen flex items-center justify-center px-4">
 
-    <textarea id="resume" placeholder="Paste Resume Here"></textarea>
-    <textarea id="jd" placeholder="Paste Job Description Here"></textarea>
+    <div class="bg-white shadow-2xl rounded-3xl w-full max-w-4xl p-10 transition-all duration-300">
 
-    <button id="startBtn">Start Interview</button>
-    <div id="loader" class="hidden">Starting...</div>
-</div>
+        <!-- Header -->
+        <div class="text-center mb-10">
+            <h1 class="text-4xl font-bold text-blue-700 mb-3">
+                HireSense AI Interview Platform
+            </h1>
+            <p class="text-gray-500">
+                Intelligent AI-powered mock interviews tailored to your profile
+            </p>
+        </div>
+
+        <!-- Form -->
+        <div class="space-y-6">
+
+            <div>
+                <label class="block font-semibold text-gray-700 mb-2">
+                    Resume
+                </label>
+                <textarea
+                    id="resume"
+                    placeholder="Paste Resume Here"
+                    class="w-full h-44 p-4 border border-blue-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none shadow-sm"
+                ></textarea>
+            </div>
+
+            <div>
+                <label class="block font-semibold text-gray-700 mb-2">
+                    Job Description
+                </label>
+                <textarea
+                    id="jd"
+                    placeholder="Paste Job Description Here"
+                    class="w-full h-44 p-4 border border-blue-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none shadow-sm"
+                ></textarea>
+            </div>
+
+            <button
+                id="startBtn"
+                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 rounded-2xl transition duration-200 shadow-md hover:shadow-lg active:scale-95"
+            >
+                Start Interview
+            </button>
+
+            <div
+                id="loader"
+                class="hidden text-center text-gray-600 font-medium"
+            >
+                Starting interview...
+            </div>
+
+        </div>
+
+    </div>
 
 <script type="module">
 import { startInterview } from "./js/api.js";
@@ -31,12 +83,18 @@ btn.addEventListener("click", async () => {
     loader.classList.remove("hidden");
     btn.disabled = true;
 
-    const response = await startInterview(resume, jd);
+    try {
+        const response = await startInterview(resume, jd);
 
-    sessionStorage.setItem("session_id", response.session_id);
-    sessionStorage.setItem("current_question", response.question);
+        sessionStorage.setItem("session_id", response.session_id);
+        sessionStorage.setItem("current_question", response.question);
 
-    window.location.href = "interview.html";
+        window.location.href = "interview.html";
+    } catch (error) {
+        alert("Failed to start interview. Check backend.");
+        btn.disabled = false;
+        loader.classList.add("hidden");
+    }
 });
 </script>
 

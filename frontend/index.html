@@ -1,44 +1,97 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>HireSense AI Interview</title>
-    <link rel="stylesheet" href="css/styles.css">
+    <meta charset="UTF-8" />
+    <title>HireSense - Start Interview</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 40px;
+            background: #f5f7fa;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 120px;
+            margin-bottom: 20px;
+            padding: 10px;
+            font-size: 14px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .loading {
+            margin-top: 15px;
+            color: #555;
+        }
+    </style>
 </head>
 <body>
 
-<div class="container">
-    <h1>HireSense AI Interview Platform</h1>
+    <h1>Start AI Interview</h1>
 
-    <textarea id="resume" placeholder="Paste Resume Here"></textarea>
-    <textarea id="jd" placeholder="Paste Job Description Here"></textarea>
+    <label>Paste Resume:</label>
+    <textarea id="resumeInput" placeholder="Paste your resume here..."></textarea>
+
+    <label>Paste Job Description:</label>
+    <textarea id="jdInput" placeholder="Paste job description here..."></textarea>
 
     <button id="startBtn">Start Interview</button>
-    <div id="loader" class="hidden">Starting...</div>
-</div>
 
-<script type="module">
-import { startInterview } from "./js/api.js";
+    <div id="loadingMessage" class="loading"></div>
 
-const btn = document.getElementById("startBtn");
-const loader = document.getElementById("loader");
+    <script type="module">
+        import { startInterview } from "./api.js";
 
-btn.addEventListener("click", async () => {
-    const resume = document.getElementById("resume").value;
-    const jd = document.getElementById("jd").value;
+        const startBtn = document.getElementById("startBtn");
+        const loadingMessage = document.getElementById("loadingMessage");
 
-    if (!resume || !jd) return alert("All fields required");
+        startBtn.addEventListener("click", async () => {
+            const resume = document.getElementById("resumeInput").value.trim();
+            const jobDescription = document.getElementById("jdInput").value.trim();
 
-    loader.classList.remove("hidden");
-    btn.disabled = true;
+            if (!resume || !jobDescription) {
+                alert("Please fill both resume and job description.");
+                return;
+            }
 
-    const response = await startInterview(resume, jd);
+            try {
+                loadingMessage.innerText = "Starting interview...";
+                startBtn.disabled = true;
 
-    sessionStorage.setItem("session_id", response.session_id);
-    sessionStorage.setItem("current_question", response.question);
+                const response = await startInterview(resume, jobDescription);
 
-    window.location.href = "interview.html";
-});
-</script>
+                if (!response.session_id) {
+                    console.error("Invalid start response:", response);
+                    alert("Failed to start interview.");
+                    startBtn.disabled = false;
+                    loadingMessage.innerText = "";
+                    return;
+                }
+
+                // ✅ Store session properly
+                sessionStorage.setItem("session_id", response.session_id);
+                sessionStorage.setItem("current_question", response.question);
+
+                // Move to interview page
+                window.location.href = "interview.html";
+
+            } catch (err) {
+                console.error("Start error:", err);
+                alert("Backend connection failed.");
+                startBtn.disabled = false;
+                loadingMessage.innerText = "";
+            }
+        });
+    </script>
 
 </body>
 </html>

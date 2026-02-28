@@ -1,6 +1,4 @@
-from unittest import result
-
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import Dict
 
@@ -30,14 +28,10 @@ def get_interview_router(orchestrator: InterviewOrchestrator) -> APIRouter:
 
     @router.post("/answer")
     def submit_answer(request: AnswerRequest) -> Dict:
-         result = orchestrator.submit_answer(
-    session_id=request.session_id,
-    answer=request.answer,
-)
-
-    print("ANSWER RESULT:", result)
-
-    return result
+        return orchestrator.submit_answer(
+            session_id=request.session_id,
+            answer=request.answer,
+        )
 
     @router.post("/end")
     def end_interview(request: EndRequest) -> Dict:

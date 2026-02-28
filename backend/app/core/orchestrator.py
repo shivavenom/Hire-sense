@@ -1,3 +1,5 @@
+# app/core/orchestrator.py
+
 import uuid
 from enum import Enum
 from typing import Dict, Any, List
@@ -34,16 +36,6 @@ class InterviewState(str, Enum):
 # ==========================================================
 
 class InterviewOrchestrator:
-    """
-    Production-grade orchestration engine.
-
-    Responsibilities:
-    - Enforce deterministic state transitions
-    - Coordinate agents
-    - Guard lifecycle correctness
-    - Never call LLM directly
-    - Never contain prompt logic
-    """
 
     def __init__(
         self,
@@ -65,26 +57,50 @@ class InterviewOrchestrator:
     # PUBLIC API
     # ======================================================
 
-    def start_interview(self, resume: str, job_description: str) -> Dict[str, Any]:
+    def start_interview(
+        self,
+        resume: str,
+        job_description: str,
+        candidate_name: str = "Candidate",
+    ) -> Dict[str, Any]:
+
         session_id = str(uuid.uuid4())
 
         logger.info(f"[START] Creating session {session_id}")
 
+        # Create base session
         self.session_store.create_session(
             session_id=session_id,
             state=InterviewState.INITIALIZED.value,
         )
 
+        # Initialize extended fields
+        self.session_store.update_session(session_id, {
+            "candidate_name": candidate_name,
+            "resume": resume,
+            "job_description": job_description,
+            "conversation": [],
+            "questions": [],
+            "answers": [],
+            "evaluations": [],
+        })
+
+        # Generate plan
         self._generate_plan(session_id, resume, job_description)
-        first_question = self._ask_next_question(session_id)
+
+        # Ask first conversational message
+        first_message = self._ask_next_question(session_id)
 
         return {
             "session_id": session_id,
             "state": InterviewState.QUESTION_ASKED.value,
-            "question": first_question,
+            "question": first_message,
         }
 
+    # ======================================================
+
     def submit_answer(self, session_id: str, answer: str) -> Dict[str, Any]:
+
         session = self._require_session(session_id)
 
         self._ensure_state(
@@ -100,19 +116,29 @@ class InterviewOrchestrator:
 
         logger.info(f"[ANSWER] Session {session_id}")
 
+        # Store user answer
         self.session_store.append_answer(session_id, answer)
+
+        # Add to conversation memory
+        conversation = session.get("conversation", [])
+        conversation.append({"role": "user", "content": answer})
+        self.session_store.update_session(session_id, {
+            "conversation": conversation
+        })
+
         self.session_store.update_state(
-            session_id, InterviewState.ANSWER_RECEIVED.value
+            session_id,
+            InterviewState.ANSWER_RECEIVED.value
         )
 
+        # Evaluate silently
         evaluation = self._evaluate_answer(session_id)
 
-        # If probing required
+        # Decide probing or continue
         if self.probing_engine.should_probe(evaluation):
             next_question = self._generate_followup(session_id, evaluation)
             next_state = InterviewState.PROBING.value
         else:
-            # Check completion before asking next
             updated_session = self._require_session(session_id)
 
             if self._is_interview_complete(updated_session):
@@ -129,7 +155,10 @@ class InterviewOrchestrator:
             "state": next_state,
         }
 
+    # ======================================================
+
     def end_interview(self, session_id: str) -> Dict[str, Any]:
+
         session = self._require_session(session_id)
 
         self._ensure_not_completed(session)
@@ -139,7 +168,8 @@ class InterviewOrchestrator:
         report = self.reporter.generate_report(session)
 
         self.session_store.update_state(
-            session_id, InterviewState.COMPLETED.value
+            session_id,
+            InterviewState.COMPLETED.value
         )
 
         return {
@@ -147,11 +177,15 @@ class InterviewOrchestrator:
             "report": report,
         }
 
+    # ======================================================
+
     def terminate_interview(self, session_id: str) -> Dict[str, Any]:
+
         self._require_session(session_id)
 
         self.session_store.update_state(
-            session_id, InterviewState.TERMINATED.value
+            session_id,
+            InterviewState.TERMINATED.value
         )
 
         logger.warning(f"[TERMINATED] Session {session_id}")
@@ -159,51 +193,73 @@ class InterviewOrchestrator:
         return {"state": InterviewState.TERMINATED.value}
 
     # ======================================================
-    # INTERNAL CONTROL METHODS
+    # INTERNAL METHODS
     # ======================================================
 
     def _generate_plan(
-        self, session_id: str, resume: str, jd: str
+        self,
+        session_id: str,
+        resume: str,
+        jd: str
     ) -> None:
+
         logger.info(f"[PLAN] Generating plan for {session_id}")
 
         plan = self.planner.create_plan(resume, jd)
 
         self.session_store.store_plan(session_id, plan)
+
         self.session_store.update_state(
-            session_id, InterviewState.PLANNED.value
+            session_id,
+            InterviewState.PLANNED.value
         )
+
+    # ------------------------------------------------------
 
     def _ask_next_question(self, session_id: str) -> str:
+
         session = self._require_session(session_id)
 
-        question = self.conductor.generate_question(session)
+        message = self.conductor.generate_question(session)
 
-        if not question or not question.strip():
-            raise RuntimeError("Generated question is invalid")
+        if not message or not message.strip():
+            raise RuntimeError("Generated message is invalid")
 
-        self.session_store.store_question(session_id, question)
+        self.session_store.store_question(session_id, message)
+
         self.session_store.update_state(
-            session_id, InterviewState.QUESTION_ASKED.value
+            session_id,
+            InterviewState.QUESTION_ASKED.value
         )
 
-        return question
+        return message
+
+    # ------------------------------------------------------
 
     def _generate_followup(
-        self, session_id: str, evaluation: Dict[str, Any]
+        self,
+        session_id: str,
+        evaluation: Dict[str, Any]
     ) -> str:
+
         session = self._require_session(session_id)
 
-        question = self.conductor.generate_followup(session, evaluation)
+        message = self.conductor.generate_followup(
+            session,
+            evaluation
+        )
 
-        if not question or not question.strip():
-            raise RuntimeError("Generated follow-up question is invalid")
+        if not message or not message.strip():
+            raise RuntimeError("Generated follow-up is invalid")
 
-        self.session_store.store_question(session_id, question)
+        self.session_store.store_question(session_id, message)
 
-        return question
+        return message
+
+    # ------------------------------------------------------
 
     def _evaluate_answer(self, session_id: str) -> Dict[str, Any]:
+
         session = self._require_session(session_id)
 
         question = session.get("current_question")
@@ -214,28 +270,37 @@ class InterviewOrchestrator:
             raise RuntimeError("No active question to evaluate")
 
         if not answers:
-            raise RuntimeError("No answers available for evaluation")
+            raise RuntimeError("No answers available")
 
         if not plan:
             raise RuntimeError("Interview plan missing")
 
         answer = answers[-1]
 
-        evaluation = self.evaluator.evaluate(question, answer, plan)
-        print("EVALUATION OUTPUT:", evaluation)
+        evaluation = self.evaluator.evaluate(
+            question,
+            answer,
+            plan
+        )
 
-        self.session_store.store_evaluation(session_id, evaluation)
+        self.session_store.store_evaluation(
+            session_id,
+            evaluation
+        )
+
         self.session_store.update_state(
-            session_id, InterviewState.EVALUATED.value
+            session_id,
+            InterviewState.EVALUATED.value
         )
 
         return evaluation
 
     # ======================================================
-    # VALIDATION & GUARD LAYER
+    # VALIDATION LAYER
     # ======================================================
 
     def _require_session(self, session_id: str) -> Dict[str, Any]:
+
         session = self.session_store.get_session(session_id)
 
         if not session:
@@ -244,21 +309,40 @@ class InterviewOrchestrator:
 
         return session
 
-    def _ensure_state(self, session: Dict[str, Any], allowed: List[str]) -> None:
+    # ------------------------------------------------------
+
+    def _ensure_state(
+        self,
+        session: Dict[str, Any],
+        allowed: List[str]
+    ) -> None:
+
         if session["state"] not in allowed:
             raise RuntimeError(
                 f"Invalid state transition. "
                 f"Current: {session['state']}, Allowed: {allowed}"
             )
 
-    def _ensure_not_completed(self, session: Dict[str, Any]) -> None:
+    # ------------------------------------------------------
+
+    def _ensure_not_completed(
+        self,
+        session: Dict[str, Any]
+    ) -> None:
+
         if session["state"] in [
             InterviewState.COMPLETED.value,
             InterviewState.TERMINATED.value,
         ]:
             raise RuntimeError("Interview already finished")
 
-    def _is_interview_complete(self, session: Dict[str, Any]) -> bool:
+    # ------------------------------------------------------
+
+    def _is_interview_complete(
+        self,
+        session: Dict[str, Any]
+    ) -> bool:
+
         plan = session.get("plan", {})
         core_topics = plan.get("core_topics", [])
         asked = len(session.get("questions", []))
