@@ -2,65 +2,29 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>HireSense AI - Interview Report</title>
+    <title>HireSense AI - Report</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="shortcut icon" href="logo.jpeg" type="image/x-icon">
 </head>
+<body class="bg-gradient-to-br from-blue-50 to-blue-100 min-h-screen flex items-center justify-center">
 
-<body class="bg-gradient-to-br from-blue-50 via-white to-blue-100 min-h-screen flex items-center justify-center px-4">
+<div class="bg-white shadow-xl rounded-2xl w-full max-w-3xl p-10">
 
-<div class="bg-white shadow-2xl rounded-3xl w-full max-w-3xl p-10">
-
-    <h1 class="text-3xl font-bold text-blue-700 mb-8 text-center">
-        Final Interview Report
+    <h1 class="text-3xl font-bold text-blue-700 mb-6 text-center">
+        Interview Report
     </h1>
 
-    <div id="reportContent" class="space-y-6 text-gray-700 text-sm leading-relaxed"></div>
+    <div id="reportContent" class="space-y-4 text-gray-700"></div>
 
-    <div class="mt-10 text-center">
+    <div class="mt-8 text-center">
         <button onclick="window.location.href='index.html'"
-            class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-3 rounded-2xl transition shadow-md active:scale-95">
+            class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold">
             Start New Interview
         </button>
     </div>
 
 </div>
 
-<script>
-const report = JSON.parse(sessionStorage.getItem("report"));
-
-const container = document.getElementById("reportContent");
-
-if (!report) {
-    container.innerHTML = "<p>No report found.</p>";
-} else {
-
-    container.innerHTML = `
-        <div class="bg-blue-50 p-6 rounded-2xl shadow-sm">
-            <p><strong>Overall Score:</strong> ${report.overall_score || "N/A"}</p>
-        </div>
-
-        <div>
-            <h3 class="font-bold text-blue-700 mb-2">Strengths</h3>
-            <ul class="list-disc list-inside">
-                ${(report.strengths || []).map(s => `<li>${s}</li>`).join("")}
-            </ul>
-        </div>
-
-        <div>
-            <h3 class="font-bold text-blue-700 mb-2">Weaknesses</h3>
-            <ul class="list-disc list-inside">
-                ${(report.weaknesses || []).map(w => `<li>${w}</li>`).join("")}
-            </ul>
-        </div>
-
-        <div>
-            <h3 class="font-bold text-blue-700 mb-2">Recommendations</h3>
-            <p>${report.recommendations || "No recommendations provided."}</p>
-        </div>
-    `;
-}
-</script>
+<script type="module" src="js/report.js"></script>
 
 </body>
 </html>
