@@ -1,0 +1,11 @@
+body {
+    background: #111;
+    color: white;
+    font-family: Arial;
+}
+
+.report-container {
+    width: 800px;
+    margin: auto;
+    padding: 50px;
+}
